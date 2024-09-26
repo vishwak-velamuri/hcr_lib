@@ -7,7 +7,7 @@ from typing import Callable
 class HCR:
     def __init__(self, m: int):
         """
-        Initialize the HCR (Hermite-like Continuous Representation) object.
+        Initialize the HCR (Hierarchical Correlation Reconstruction) object.
 
         Args:
             m (int): Maximum degree of Legendre polynomials.
