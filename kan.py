@@ -2,7 +2,7 @@ import tensorflow as tf
 from keras import layers, models
 import numpy as np
 import networkx as nx
-from typing import List, Union
+from typing import List
 
 class KANModel:
     def __init__(self, input_dim: int, hidden_layers: List[int] = [128, 64], output_dim: int = 1, activation: str = 'relu', final_activation: str = 'sigmoid'):

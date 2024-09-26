@@ -1,9 +1,8 @@
 import numpy as np
 from scipy import stats
 from scipy.special import legendre
-from scipy.optimize import minimize
 from itertools import product
-from typing import List, Tuple, Union, Callable
+from typing import Callable
 
 class HCR:
     def __init__(self, m: int):

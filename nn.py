@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from typing import List, Tuple, Union
+from typing import List
 from hcr import HCR
 from kan import KANModel
 from scipy.optimize import minimize
