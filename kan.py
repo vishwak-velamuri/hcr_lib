@@ -164,6 +164,7 @@ class KANModel:
         """
         self.model = models.load_model(filepath)
 
+
 # Example usage
 if __name__ == '__main__':
     # Sample data: Replace this with your actual dataset
