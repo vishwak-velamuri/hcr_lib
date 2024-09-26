@@ -1,11 +1,12 @@
 import tensorflow as tf
-from keras import layers, models, models
+from keras import layers, models
 import numpy as np
 import networkx as nx
 from typing import List
 
 class KANModel:
-    def __init__(self, input_dim: int, hidden_layers: List[int] = [128, 64], output_dim: int = 1, activation: str = 'relu', final_activation: str = 'sigmoid'):
+    def __init__(self, input_dim: int, hidden_layers: List[int] = [128, 64], output_dim: int = 10,
+                 activation: str = 'relu', final_activation: str = 'sigmoid', l2_reg: float = 0.01):
         """
         Initializes the KAN-like neural network model with a graph-based transformation.
         
@@ -15,24 +16,26 @@ class KANModel:
             output_dim (int): Number of output units (1 for binary classification).
             activation (str): Activation function for hidden layers.
             final_activation (str): Activation function for output layer.
+            l2_reg (float): L2 regularization strength.
         """
         self.input_dim = input_dim
         self.hidden_layers = hidden_layers
         self.output_dim = output_dim
         self.activation = activation
         self.final_activation = final_activation
+        self.l2_reg = l2_reg
         self.transformed_input_dim = input_dim * 5  # Update this based on the actual transformation
         self.model = self._build_model()
 
     def _build_model(self) -> models.Model:
         model = models.Sequential()
         
-        # Input layer (now using the transformed input dimension)
+        # Input layer (using the transformed input dimension)
         model.add(layers.InputLayer(shape=(self.transformed_input_dim,)))
 
         # Add hidden layers with L2 regularization and dropout
         for units in self.hidden_layers:
-            model.add(layers.Dense(units, activation=self.activation, kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+            model.add(layers.Dense(units, activation=self.activation, kernel_regularizer=tf.keras.regularizers.l2(self.l2_reg)))
             model.add(layers.Dropout(0.2))  # Add dropout for regularization
         
         # Output layer
@@ -45,17 +48,17 @@ class KANModel:
         
         # Compile the model with the scheduled learning rate
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-        model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
         
         return model
 
-    def build_graph(self, input_data: np.ndarray) -> np.ndarray:
+    def build_graph(self, input_data: np.ndarray, threshold: float = 0.5) -> np.ndarray:
         """
         Builds a simple adjacency matrix graph based on input data correlations.
-        Each node is a feature, and edges represent correlation strength.
         
         Args:
             input_data (np.ndarray): Input data for building the graph (features).
+            threshold (float): Correlation threshold for edge creation.
         
         Returns:
             np.ndarray: Adjacency matrix representing the graph.
@@ -67,9 +70,8 @@ class KANModel:
         for i in range(num_features):
             G.add_node(i)
         
-        # Build edges with a simple correlation threshold (can be replaced with knowledge-based relations)
+        # Build edges with correlation threshold
         corr_matrix = np.corrcoef(input_data.T)  # Correlation between features
-        threshold = 0.5  # Adjust based on domain knowledge
         
         for i in range(num_features):
             for j in range(i + 1, num_features):
@@ -82,7 +84,6 @@ class KANModel:
     def kan_transform(self, input_data: np.ndarray) -> np.ndarray:
         """
         Performs KAN-like transformation using a graph adjacency matrix to enhance input data.
-        Incorporates relationships between input features.
         
         Args:
             input_data (np.ndarray): Input data (e.g., features) to be transformed.
@@ -129,14 +130,18 @@ class KANModel:
         # Early stopping to prevent overfitting
         early_stopping = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss', patience=10, restore_best_weights=True)
-        
-        # Train the model with more epochs and early stopping
+
+        # Model checkpointing to save the best model
+        model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+            filepath='best_model.keras', monitor='val_loss', save_best_only=True)
+
+        # Train the model with early stopping and checkpointing
         history = self.model.fit(
             X_transformed, y_train, 
             batch_size=batch_size, 
             epochs=epochs, 
             validation_split=0.2,
-            callbacks=[early_stopping]
+            callbacks=[early_stopping, model_checkpoint]
         )
         
         return history
@@ -175,7 +180,7 @@ class KANModel:
         Args:
             filepath (str): Path where the model should be saved.
         """
-        self.model.save(filepath)
+        self.model.save(filepath, save_format='keras')
 
     def load_model(self, filepath: str) -> None:
         """
@@ -184,44 +189,59 @@ class KANModel:
         Args:
             filepath (str): Path where the model is saved.
         """
-        self.model = models.load_model(filepath)
-
+        self.model = models.load_model(filepath, compile=True)
 
 # Example usage
+# Example usage
 if __name__ == '__main__':
-    # Sample data: Replace this with your actual dataset
-    X_train = np.random.rand(1000, 10)  # 1000 samples, 10 features
-    y_train = np.random.randint(0, 2, size=(1000,))  # Binary target
+    import numpy as np
+    from utils import load_mnist, preprocess_data, one_hot_encode, accuracy_score
+    from visualization import plot_training_history, plot_comparison
     
-    X_test = np.random.rand(200, 10)  # 200 samples for testing
-    y_test = np.random.randint(0, 2, size=(200,))  # Binary target for testing
-    
+    # Load and preprocess MNIST data
+    (x_train, y_train), (x_test, y_test) = load_mnist()
+    x_train, x_test = preprocess_data(x_train, x_test)
+    y_train_onehot = one_hot_encode(y_train)
+    y_test_onehot = one_hot_encode(y_test)
+
     # Create the KANModel instance
-    input_dim = X_train.shape[1]
-    kan_model = KANModel(input_dim=input_dim)
+    input_dim = x_train.shape[1]
+    num_classes = 10  # MNIST has 10 classes
+    kan_model = KANModel(input_dim=input_dim, hidden_layers=[128, 64], output_dim=num_classes, final_activation='softmax', l2_reg=0.001)
 
     # Train the model
     print("Training the model...")
-    kan_model.train(X_train, y_train, epochs=5)
+    history = kan_model.train(x_train, y_train_onehot, epochs=20, batch_size=128)
+
+    # Plot training history
+    plot_training_history(history.history)
 
     # Evaluate the model
     print("Evaluating the model...")
-    loss, accuracy = kan_model.evaluate(X_test, y_test)
+    loss, accuracy = kan_model.evaluate(x_test, y_test_onehot)
     print(f"Test Loss: {loss}, Test Accuracy: {accuracy}")
 
-    # Predict on new data
+    # Make predictions
     print("Making predictions...")
-    predictions = kan_model.predict(X_test)
-    print(f"Predictions: {predictions[:5]}")
-    
+    predictions = kan_model.predict(x_test[:1000])
+    predicted_classes = np.argmax(predictions, axis=1)
+    true_classes = np.argmax(y_test_onehot[:1000], axis=1)
+
+    # Calculate and print accuracy
+    acc = accuracy_score(true_classes, predicted_classes)
+    print(f"Accuracy on 1000 test samples: {acc}")
+
+    # Plot comparison (for the first 100 samples)
+    plot_comparison(range(100), true_classes[:100], predicted_classes[:100], "MNIST Predictions")
+
     # Save and load the model
     print("Saving the model...")
-    kan_model.save_model('kan_model.h5')
+    kan_model.save_model('kan_model.keras')
     
     print("Loading the model...")
-    kan_model.load_model('kan_model.h5')
+    kan_model.load_model('kan_model.keras')
     
     # Re-evaluate after loading to ensure it works
     print("Re-evaluating the loaded model...")
-    loss, accuracy = kan_model.evaluate(X_test, y_test)
+    loss, accuracy = kan_model.evaluate(x_test, y_test_onehot)
     print(f"Re-loaded Model - Test Loss: {loss}, Test Accuracy: {accuracy}")

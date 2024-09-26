@@ -33,6 +33,7 @@ class TestNN(unittest.TestCase):
     def test_train_hcrkan(self):
         losses = train_hcrkan(self.model, self.X, self.y, epochs=10)
         self.assertEqual(len(losses), 10)
+        self.assertTrue(all(isinstance(loss, float) for loss in losses))
 
     def test_direct_estimation_training(self):
         direct_estimation_training(self.model, self.X, self.y, self.m)
