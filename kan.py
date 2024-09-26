@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers, models
+from keras import layers, models
 import numpy as np
 import networkx as nx
 from typing import List, Union

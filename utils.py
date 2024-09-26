@@ -2,7 +2,8 @@ import numpy as np
 from scipy import stats
 from sklearn.metrics import mutual_info_score
 from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.dataset import mnist
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split as sk_train_test_split
 from typing import Tuple
 
 def normalize_gaussian(data: np.ndarray) -> np.ndarray:
@@ -58,33 +59,26 @@ def train_test_split(X: np.ndarray, y: np.ndarray, test_size: float = 0.2, rando
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: X_train, X_test, y_train, y_test
     """
-    if random_state is not None:
-        np.random.seed(random_state)
-    
-    n_samples = X.shape[0]
-    n_test = int(n_samples * test_size)
-    indices = np.random.permutation(n_samples)
-    test_indices = indices[:n_test]
-    train_indices = indices[n_test:]
-    
-    X_train, X_test = X[train_indices], X[test_indices]
-    y_train, y_test = y[train_indices], y[test_indices]
-    
-    return X_train, X_test, y_train, y_test
+    return sk_train_test_split(X, y, test_size=test_size, random_state=random_state)
 
 def load_mnist():
     """
-    Load and return the MNIST dataset.
+    Load and return the MNIST dataset using sklearn.
     
     Returns:
         tuple: (x_train, y_train), (x_test, y_test)
     """
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    mnist = fetch_openml('mnist_784', version=1, as_frame=False, parser='auto')
+    X, y = mnist.data, mnist.target.astype(int)
+    
+    # Split the data into train and test sets
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
     return (x_train, y_train), (x_test, y_test)
 
 def preprocess_data(x_train, x_test):
     """
-    Preprocess the input data by reshaping and normalizing.
+    Preprocess the input data by normalizing.
     
     Args:
         x_train (np.ndarray): Training data
@@ -93,10 +87,6 @@ def preprocess_data(x_train, x_test):
     Returns:
         tuple: Preprocessed (x_train, x_test)
     """
-    # Reshape
-    x_train = x_train.reshape(x_train.shape[0], -1)
-    x_test = x_test.reshape(x_test.shape[0], -1)
-    
     # Normalize
     scaler = StandardScaler()
     x_train = scaler.fit_transform(x_train)
