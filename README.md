@@ -5,7 +5,7 @@ The HCR library is designed for Hierarchical Correlation Reconstruction, providi
 ## Project Directory
 
 ```
-smart-vision/
+hcr-lib/
 ├── README.md
 ├── __init__.py
 ├── hcr.py
