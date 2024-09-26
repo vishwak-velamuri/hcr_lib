@@ -5,6 +5,7 @@ import torch.optim as optim
 from typing import List, Tuple, Union
 from hcr import HCR
 from kan import KANModel
+from scipy.optimize import minimize
 
 class HCRLayer(nn.Module):
     def __init__(self, input_dim: int, output_dim: int, m: int):
