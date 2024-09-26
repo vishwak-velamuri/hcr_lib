@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras import layers, models
+from keras import layers, models, models
 import numpy as np
 import networkx as nx
 from typing import List
@@ -21,17 +21,18 @@ class KANModel:
         self.output_dim = output_dim
         self.activation = activation
         self.final_activation = final_activation
+        self.transformed_input_dim = input_dim * 5  # Update this based on the actual transformation
         self.model = self._build_model()
 
     def _build_model(self) -> models.Model:
         model = models.Sequential()
         
-        # Input layer
-        model.add(layers.InputLayer(shape=(self.input_dim,)))
+        # Input layer (now using the transformed input dimension)
+        model.add(layers.InputLayer(shape=(self.transformed_input_dim,)))
 
         # Add hidden layers with L2 regularization and dropout
         for units in self.hidden_layers:
-            model.add(layers.Dense(units, activation=self.activation, kernel_regularizer=regularizers.l2(0.01)))
+            model.add(layers.Dense(units, activation=self.activation, kernel_regularizer=tf.keras.regularizers.l2(0.01)))
             model.add(layers.Dropout(0.2))  # Add dropout for regularization
         
         # Output layer
@@ -96,6 +97,7 @@ class KANModel:
         
         # Add non-linear transformations
         transformed_data = np.column_stack([
+            input_data,  # Include original features
             transformed_data,
             np.sin(transformed_data),
             np.cos(transformed_data),
@@ -133,7 +135,7 @@ class KANModel:
             X_transformed, y_train, 
             batch_size=batch_size, 
             epochs=epochs, 
-            validation_split=validation_split,
+            validation_split=0.2,
             callbacks=[early_stopping]
         )
         
