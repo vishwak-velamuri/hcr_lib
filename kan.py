@@ -24,26 +24,27 @@ class KANModel:
         self.model = self._build_model()
 
     def _build_model(self) -> models.Model:
-        """
-        Builds the neural network model architecture.
-        
-        Returns:
-            models.Model: Compiled Keras model.
-        """
         model = models.Sequential()
         
         # Input layer
-        model.add(layers.InputLayer(input_shape=(self.input_dim,)))
+        model.add(layers.InputLayer(shape=(self.input_dim,)))
 
-        # Add hidden layers
+        # Add hidden layers with L2 regularization and dropout
         for units in self.hidden_layers:
-            model.add(layers.Dense(units, activation=self.activation))
+            model.add(layers.Dense(units, activation=self.activation, kernel_regularizer=regularizers.l2(0.01)))
+            model.add(layers.Dropout(0.2))  # Add dropout for regularization
         
         # Output layer
         model.add(layers.Dense(self.output_dim, activation=self.final_activation))
         
-        # Compile the model
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        # Use a custom learning rate schedule
+        initial_learning_rate = 0.001
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate, decay_steps=100, decay_rate=0.96, staircase=True)
+        
+        # Compile the model with the scheduled learning rate
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+        model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
         
         return model
 
@@ -91,10 +92,20 @@ class KANModel:
         adjacency_matrix = self.build_graph(input_data)
         
         # Combine input data with adjacency matrix (feature interactions)
-        transformed_data = np.dot(input_data, adjacency_matrix)  # Interaction between features
+        transformed_data = np.dot(input_data, adjacency_matrix)
         
-        # Normalize transformed data to prevent large values
-        transformed_data = transformed_data / np.linalg.norm(transformed_data, axis=1, keepdims=True)
+        # Add non-linear transformations
+        transformed_data = np.column_stack([
+            transformed_data,
+            np.sin(transformed_data),
+            np.cos(transformed_data),
+            np.tanh(transformed_data)
+        ])
+        
+        # Normalize transformed data
+        epsilon = 1e-8
+        norm = np.linalg.norm(transformed_data, axis=1, keepdims=True)
+        transformed_data = transformed_data / (norm + epsilon)
         
         return transformed_data
 
@@ -111,11 +122,20 @@ class KANModel:
         Returns:
             tf.keras.callbacks.History: History object from the training process.
         """
-        # Apply KAN-like transformation to input data
         X_transformed = self.kan_transform(X_train)
         
-        # Train the model
-        history = self.model.fit(X_transformed, y_train, batch_size=batch_size, epochs=epochs)
+        # Early stopping to prevent overfitting
+        early_stopping = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss', patience=10, restore_best_weights=True)
+        
+        # Train the model with more epochs and early stopping
+        history = self.model.fit(
+            X_transformed, y_train, 
+            batch_size=batch_size, 
+            epochs=epochs, 
+            validation_split=validation_split,
+            callbacks=[early_stopping]
+        )
         
         return history
 

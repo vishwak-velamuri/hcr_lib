@@ -27,7 +27,8 @@ class TestHCR(unittest.TestCase):
 
     def test_estimate_coefficients_nd(self):
         coeffs = self.hcr.estimate_coefficients_nd(self.data_nd)
-        self.assertEqual(coeffs.shape, (6, 6, 6))
+        expected_size = (self.hcr.m + 1) ** self.data_nd.shape[1]
+        self.assertEqual(coeffs.shape, (expected_size,))
 
     def test_density_1d(self):
         self.hcr.estimate_coefficients_1d(self.data_1d)
@@ -37,7 +38,7 @@ class TestHCR(unittest.TestCase):
 
     def test_density_nd(self):
         self.hcr.estimate_coefficients_nd(self.data_nd)
-        x = np.random.rand(3)
+        x = np.random.rand(1, self.data_nd.shape[1])  # Create a single point with the correct dimensionality
         density = self.hcr.density_nd(x)
         self.assertTrue(isinstance(density, float))
 

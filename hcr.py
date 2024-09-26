@@ -5,7 +5,7 @@ from itertools import product
 from typing import Callable
 
 class HCR:
-    def __init__(self, m: int):
+    def __init__(self, m, data=None):
         """
         Initialize the HCR (Hierarchical Correlation Reconstruction) object.
 
@@ -13,7 +13,11 @@ class HCR:
             m (int): Maximum degree of Legendre polynomials.
         """
         self.m = m
-        self.coefficients = None
+        if data is not None:
+            self.d = data.shape[1]  # Assuming data is a 2D array (samples, features)
+        else:
+            self.d = 1  # Default to 1D if no data is provided
+        self.coefficients = np.zeros((self.m + 1) ** self.d)  # Initialize coefficients as a 1D array
 
     @staticmethod
     def normalize_gaussian(data: np.ndarray) -> np.ndarray:
@@ -92,14 +96,18 @@ class HCR:
         """
         n, d = data.shape
         normalized_data = np.array([self.normalize_edf(data[:, i]) for i in range(d)]).T
-        
+    
         basis = [self.legendre_basis(self.m, normalized_data[:, i]) for i in range(d)]
-        
-        self.coefficients = np.zeros([self.m+1] * d)
-        for idx in product(range(self.m+1), repeat=d):
-            self.coefficients[idx] = np.mean(np.prod([basis[i][idx[i]] for i in range(d)], axis=0))
-        
+    
+        # Initialize coefficients as a 1D array
+        self.coefficients = np.zeros((self.m + 1) ** d)
+
+        for idx, multi_index in enumerate(product(range(self.m + 1), repeat=d)):
+            # Calculate the mean contribution for the current index
+            self.coefficients[idx] = np.mean(np.prod([basis[i][multi_index[i]] for i in range(d)], axis=0))
+
         return self.coefficients
+
 
     def density_1d(self, x: np.ndarray) -> np.ndarray:
         """
@@ -119,19 +127,28 @@ class HCR:
         Compute HCR density for given n-dimensional coefficients.
 
         Args:
-            x (np.ndarray): Input values.
+            x (np.ndarray): Input values, can be either a single point or multiple points.
 
         Returns:
             float: Computed HCR density.
         """
-        d = len(x)
-        basis = [self.legendre_basis(self.m, xi) for xi in x]
-        
-        density = 1.0
-        for idx in product(range(1, self.m+1), repeat=d):
-            density += self.coefficients[idx] * np.prod([basis[i][idx[i]] for i in range(d)])
-        
-        return density
+        # If x is a 1D array (single point), reshape it to 2D for consistent processing
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
+
+        d = x.shape[1]  # Dimensionality of the input
+        density = 0.0
+
+        # Calculate basis functions for each point in x
+        basis = [self.legendre_basis(self.m, xi) for xi in x.T]
+
+        # Accumulate density contributions from each dimension
+        for idx, multi_index in enumerate(product(range(self.m + 1), repeat=d)):
+            # Multiply coefficients and basis functions
+            density_contribution = self.coefficients[idx] * np.prod([basis[i][multi_index[i]] for i in range(d)])
+            density += density_contribution
+
+        return 1.0 + density
 
     def conditional_distribution(self, x: int, fixed_vars: dict) -> Callable:
         """
