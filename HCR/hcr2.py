@@ -12,9 +12,10 @@ import warnings
 """HCR (Hierarchical correlation reconstruction) Python Library"""
 
 class HCR:
-    def __init__(self, max_degree=6, dimensions=1):
+    def __init__(self, max_degree=6, dimensions=1, adaptation_rate = 0.95):
         self.max_degree = max_degree
         self.dimensions = dimensions
+        self.adaptation_rate = adaptation_rate
         
     @staticmethod
     def legendre_polynomial(m, x):
@@ -58,6 +59,8 @@ class HCR:
             return stats.t.cdf(data, *params)
         elif method == 'empirical':
             return stats.rankdata(data) / (len(data) + 1)
+        elif method == 'gaussian':
+            return stats.norm.cdf(data, data.mean(), data.std())
         else:
             raise ValueError(f"Unknown normalization method: {method}")
 

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from typing import List
-from hcr import HCR
+from HCR.hcr import HCR
 from kan import KANModel
 from scipy.optimize import minimize
 

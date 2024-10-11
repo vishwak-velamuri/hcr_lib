@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from hcr import HCR
+from HCR.hcr import HCR
 
 class TestHCR(unittest.TestCase):
 
