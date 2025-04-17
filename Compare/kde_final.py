@@ -10,16 +10,7 @@ def get_financial_data():
     return dji['Close'].values
 
 def calculate_log_returns(prices: np.ndarray, dimension: int = 1) -> np.ndarray:
-    """
-    Calculate log returns and create d-dimensional vectors.
-    
-    Args:
-        prices: Array of prices
-        dimension: Number of consecutive returns to group together
-    
-    Returns:
-        Array of d-dimensional log return vectors
-    """
+    """Calculate log returns and create d-dimensional vectors."""
     # Calculate log returns
     log_returns = np.log(prices[1:] / prices[:-1])
     
@@ -35,15 +26,7 @@ def calculate_log_returns(prices: np.ndarray, dimension: int = 1) -> np.ndarray:
     return vectors
 
 def normalize_data(data: np.ndarray) -> np.ndarray:
-    """
-    Normalize data using Student's t-distribution fit.
-    
-    Args:
-        data: Input data array of shape (n_samples, n_dimensions)
-    
-    Returns:
-        Normalized data array of same shape
-    """
+    """Normalize data using Student's t-distribution fit."""
     normalized = np.zeros_like(data)
     
     # Normalize each dimension independently
@@ -54,17 +37,7 @@ def normalize_data(data: np.ndarray) -> np.ndarray:
     return normalized
 
 def split_train_test(data: np.ndarray, train_ratio: float = 0.5, random_state: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Split data into training and testing sets.
-    
-    Args:
-        data: Input data array
-        train_ratio: Ratio of training data
-        random_state: Random seed for reproducibility
-    
-    Returns:
-        Tuple of (training_data, testing_data)
-    """
+    """Split data into training and testing sets."""
     if random_state is not None:
         np.random.seed(random_state)
     
@@ -74,19 +47,7 @@ def split_train_test(data: np.ndarray, train_ratio: float = 0.5, random_state: O
     return data[indices[:split_idx]], data[indices[split_idx:]]
 
 def compute_kde_log_likelihood(data: np.ndarray, dimension, bandwidth: Union[str, float, np.ndarray] = 'scott', train_ratio: float = 0.5, random_state: Optional[int] = None) -> float:
-    """
-    Compute KDE and return log-likelihood for d-dimensional data.
-    
-    Args:
-        data: Input price data
-        dimension: Number of dimensions for KDE
-        bandwidth: Bandwidth method or value for KDE
-        train_ratio: Ratio of training data
-        random_state: Random seed for reproducibility
-    
-    Returns:
-        Log-likelihood value
-    """
+    """Compute KDE and return log-likelihood for d-dimensional data."""
     # Calculate log returns and create d-dimensional vectors
     log_returns = calculate_log_returns(data, dimension)
     
